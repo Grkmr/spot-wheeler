@@ -12,8 +12,10 @@ jobs:
         include:
           - platform: linux/amd64
             runner: ubuntu-latest
+            outdir: linux-amd64
           - platform: linux/arm64
             runner: ubuntu-24.04-arm
+            outdir: linux-arm64
     runs-on: ${{ matrix.runner }}
 
     steps:
@@ -23,18 +25,15 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Build the Dockerfile "export" stage and export /wheelhouse to the runner FS
       - name: Build and export wheelhouse
         uses: docker/build-push-action@v6
         with:
           context: .
           target: export
           platforms: ${{ matrix.platform }}
-          outputs: type=local,dest=out/${{ matrix.platform }}
-          # Optional: speed up rebuilds
+          outputs: type=local,dest=out/${{ matrix.outdir }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          # Optional: override these if you want
           build-args: |
             SPOT_REPO=https://gitlab.lre.epita.fr/spot/spot.git
             SPOT_REF=spot-2-14-5
@@ -42,14 +41,14 @@ jobs:
       - name: List exported files
         run: |
           echo "Exported tree:"
-          find out/${{ matrix.platform }} -maxdepth 3 -type f -print
+          find out/${{ matrix.outdir }} -maxdepth 3 -type f -print
           echo "Wheels:"
-          ls -lah out/${{ matrix.platform }}/wheelhouse/*.whl
+          ls -lah out/${{ matrix.outdir }}/wheelhouse/*.whl
 
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-${{ matrix.platform }}
-          path: out/${{ matrix.platform }}/wheelhouse/*.whl
+          name: wheels-${{ matrix.outdir }}
+          path: out/${{ matrix.outdir }}/wheelhouse/*.whl
           if-no-files-found: error
 
